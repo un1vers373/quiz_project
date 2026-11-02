@@ -56,7 +56,10 @@ def role_context(request):
     # Контекст-процессор: роли и профиль текущего пользователя доступны во всех шаблонах.
     user = request.user
     profile = UserProfile.objects.get_or_create(user=user)[0] if user.is_authenticated else None
-    return {'is_creator': is_creator(user), 'is_student': is_student(user), 'my_profile': profile}
+    return {
+        'is_creator': is_creator(user), 'is_student': is_student(user), 'my_profile': profile,
+        'email_enabled': getattr(settings, 'EMAIL_VERIFICATION_ENABLED', False),
+    }
 
 
 class CreatorRequiredMixin(UserPassesTestMixin):
@@ -120,6 +123,15 @@ def register(request):
     # Регистрация по почте. Аккаунт неактивен, пока студент не перейдёт по ссылке из письма:
     # так мы убеждаемся, что адрес настоящий и принадлежит ему.
     # Администраторов назначает суперпользователь в /admin/.
+    if not getattr(settings, 'EMAIL_VERIFICATION_ENABLED', False):
+        # Подтверждение почты отключено (EMAIL_VERIFICATION_ENABLED): обычная регистрация без письма,
+        # аккаунт сразу активен и пользователь сразу входит.
+        simple_form = UserCreationForm(request.POST or None)
+        if request.method == 'POST' and simple_form.is_valid():
+            user = simple_form.save()
+            login(request, user)
+            return redirect('quiz-list')
+        return render(request, TEMPLATE, {'page': 'register', 'form': simple_form})
     form = RegisterForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
         user = form.save(commit=False)
@@ -159,6 +171,9 @@ def verify_email(request, token):
 def resend_verification(request):
     # Повторная отправка письма: вошедшему пользователю - на почту из профиля,
     # не подтвердившему регистрацию - на введённый адрес.
+    if not getattr(settings, 'EMAIL_VERIFICATION_ENABLED', False):
+        messages.info(request, 'Подтверждение почты сейчас отключено.')
+        return redirect('profile' if request.user.is_authenticated else 'login')
     if request.user.is_authenticated:
         if request.method == 'POST':
             if not request.user.email:
@@ -487,7 +502,8 @@ def profile(request, username=None):
             if form.is_valid():
                 form.save()
                 new_email = form.cleaned_data.get('email', '')
-                if new_email != (target.email or '').lower():
+                email_enabled = getattr(settings, 'EMAIL_VERIFICATION_ENABLED', False)
+                if email_enabled and new_email != (target.email or '').lower():
                     # Почту изменили или привязали: она считается неподтверждённой, отправляем письмо.
                     target.email = new_email
                     target.save(update_fields=['email'])

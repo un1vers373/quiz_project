@@ -241,7 +241,7 @@ button.mini { padding: 5px 10px; font-size: .9rem; }
       <button class="wide">{% if page == 'login' %}Войти{% else %}Создать аккаунт студента{% endif %}</button>
     </form>
     <p class="center">
-      {% if page == 'login' %}Нет аккаунта? <a href="{% url 'register' %}">Зарегистрируйтесь</a><br><a href="{% url 'email-resend' %}">Не пришло письмо подтверждения?</a>
+      {% if page == 'login' %}Нет аккаунта? <a href="{% url 'register' %}">Зарегистрируйтесь</a>{% if email_enabled %}<br><a href="{% url 'email-resend' %}">Не пришло письмо подтверждения?</a>{% endif %}
       {% else %}Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a>{% endif %}
     </p>
   </section>
@@ -630,7 +630,7 @@ button.mini { padding: 5px 10px; font-size: .9rem; }
       <h1>{{ profile_user.username }}</h1>
       <span class="role">{% if profile_role == 'admin' %}Администратор{% else %}Студент{% endif %}</span>
       <p class="muted bio">{% if profile_obj.bio %}{{ profile_obj.bio|linebreaksbr }}{% elif is_own %}Расскажите о себе в форме ниже.{% else %}Пользователь пока ничего не рассказал о себе.{% endif %}</p>
-      {% if is_own %}
+      {% if is_own and email_enabled %}
         <div class="muted">📧
           {% if user.email %}{{ user.email }}
             {% if profile_obj.email_verified %}<span class="chip done">✅ подтверждена</span>
@@ -710,7 +710,7 @@ button.mini { padding: 5px 10px; font-size: .9rem; }
     <p>Сердечко на странице викторины ставит лайк (ещё одно нажатие снимает его). Отзыв можно оставить после прохождения викторины.</p>
 
     <h3>👤 Профиль</h3>
-    <p>Нажмите на своё имя справа вверху: там можно загрузить аватарку, написать о себе и привязать почту (на неё придёт письмо со ссылкой подтверждения).</p>
+    <p>Нажмите на своё имя справа вверху: там можно загрузить аватарку и написать о себе{% if email_enabled %}, а также привязать почту (на неё придёт письмо со ссылкой подтверждения){% endif %}.</p>
 
     {% if is_creator %}
       <h3>🛠 Для администратора</h3>

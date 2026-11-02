@@ -1,6 +1,5 @@
 # Конфигурация проекта «Платформа интеллектуальных викторин».
 # Проект и приложение объединены в один пакет quiz_platform (компактная структура).
-import dj_database_url
 import os
 from pathlib import Path
 
@@ -36,9 +35,6 @@ if not SECRET_KEY:
 
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
-print("DEBUG ALLOWED_HOSTS:", ALLOWED_HOSTS)
-print("DEBUG CSRF:", CSRF_TRUSTED_ORIGINS)
-
 
 # Защита от CSRF: CsrfViewMiddleware включён ниже, во всех формах стоит {% csrf_token %},
 # а DRF SessionAuthentication дополнительно проверяет CSRF для небезопасных методов.
@@ -66,7 +62,6 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -95,18 +90,11 @@ TEMPLATES = [
 ]
 
 # --- База данных: SQLite ----------------------------------------------------------
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-# --- База данных ----------------------------------------------------------
 DATABASES = {
-    'default': dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        conn_max_age=600,
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 }
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -133,8 +121,7 @@ TIME_ZONE = 'Asia/Bishkek'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_URL = 'static/'
 
 # Загружаемые файлы (аватарки профилей)
 MEDIA_URL = 'media/'
@@ -165,3 +152,8 @@ EMAIL_BACKEND = (
 )
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL') or EMAIL_HOST_USER or 'noreply@quiz.local'
 EMAIL_VERIFICATION_DAYS = 3  # сколько дней действует ссылка из письма
+
+# Главный переключатель: подтверждение почты при регистрации и привязка почты в профиле.
+# По умолчанию ВЫКЛЮЧЕНО: регистрация мгновенная, без письма. Чтобы включить, задайте
+# переменную окружения EMAIL_VERIFICATION=1 (и настройте EMAIL_* для отправки писем).
+EMAIL_VERIFICATION_ENABLED = os.environ.get('EMAIL_VERIFICATION', '0') == '1'

@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.core.exceptions import ValidationError
 
@@ -68,6 +69,8 @@ class ProfileForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
             self.fields['email'].initial = self.instance.user.email
+        if not getattr(settings, 'EMAIL_VERIFICATION_ENABLED', False):
+            self.fields.pop('email', None)  # привязка почты отключена
 
     def clean_email(self):
         email = self.cleaned_data.get('email', '').strip().lower()
@@ -126,3 +129,12 @@ class LoginForm(AuthenticationForm):
         'invalid_login': ('Неверное имя пользователя или пароль. Если вы только что зарегистрировались, '
                           'сначала подтвердите почту по ссылке из письма.'),
     }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not getattr(settings, 'EMAIL_VERIFICATION_ENABLED', False):
+            # Без подтверждения почты подсказка про письмо не нужна: стандартное сообщение Django.
+            self.error_messages = {
+                **self.error_messages,
+                'invalid_login': AuthenticationForm.error_messages['invalid_login'],
+            }
