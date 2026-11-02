@@ -36,6 +36,9 @@ if not SECRET_KEY:
 
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
+print("DEBUG ALLOWED_HOSTS:", ALLOWED_HOSTS)
+print("DEBUG CSRF:", CSRF_TRUSTED_ORIGINS)
+
 
 # Защита от CSRF: CsrfViewMiddleware включён ниже, во всех формах стоит {% csrf_token %},
 # а DRF SessionAuthentication дополнительно проверяет CSRF для небезопасных методов.
