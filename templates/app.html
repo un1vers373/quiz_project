@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Платформа интеллектуальных викторин</title>
+<script>try { if (sessionStorage.getItem('quizPlay')) { document.documentElement.classList.add('played'); } } catch (e) {}</script>
+<noscript><style>#lobby { display: block !important; } #hero { display: none !important; }</style></noscript>
+<style>
+:root {
+  --bg: #1e1f26; --bg-dark: #131417; --panel: #2c303a; --panel-2: #464a59; --line: #3a3f4d;
+  --ink: #ffffff; --muted: #a9adbd; --green: #47cf73; --green-h: #66e08d; --blue: #62d1ff;
+  --input: #d4d6de; --input-ink: #1e1f26; --bad: #ff6b6b; --gold: #ffd43b;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; min-height: 100vh; color: var(--ink); line-height: 1.5;
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  background-color: var(--bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100' viewBox='0 0 56 100'%3E%3Cpath d='M28 66L0 50L0 16L28 0L56 16L56 50L28 66L28 100' fill='none' stroke='%23ffffff' stroke-opacity='0.045' stroke-width='2'/%3E%3Cpath d='M28 0L28 34L0 50L0 84L28 100L56 84L56 50L28 34' fill='none' stroke='%23ffffff' stroke-opacity='0.045' stroke-width='2'/%3E%3C/svg%3E");
+}
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+h1 { font-size: 2.6rem; line-height: 1.1; margin: 8px 0 20px; font-weight: 800; letter-spacing: -.5px; }
+h2 { margin: 28px 0 8px; } h3 { margin: 0 0 6px; }
+.muted { color: var(--muted); } .center { text-align: center; }
+
+/* шапка */
+header {
+  background: var(--bg-dark); border-bottom: 1px solid var(--line); padding: 12px 28px;
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between;
+}
+header nav { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
+.brand { font-weight: 800; font-size: 1.15rem; color: var(--ink); }
+.brand:hover { text-decoration: none; color: var(--green); }
+.role { background: var(--panel); border-radius: 20px; padding: 2px 12px; font-size: .85rem; color: var(--muted); }
+
+main { max-width: 920px; margin: 28px auto 60px; padding: 0 18px; }
+
+/* кнопки */
+.btn, button {
+  font: inherit; font-weight: 600; cursor: pointer; border: 0; border-radius: 4px;
+  padding: 10px 20px; background: var(--green); color: #0b0c10; display: inline-block;
+  transition: background .15s, transform .05s;
+}
+.btn:hover, button:hover { background: var(--green-h); text-decoration: none; }
+.btn:active, button:active { transform: translateY(1px); }
+.btn.alt, button.alt { background: var(--panel-2); color: var(--ink); }
+.btn.alt:hover, button.alt:hover { background: #5a5f72; }
+.btn.danger, button.danger { background: #e5484d; color: #fff; }
+.btn.danger:hover, button.danger:hover { background: #f06267; }
+button.wide { width: 100%; padding: 12px; font-size: 1.05rem; }
+button.link { background: none; color: var(--blue); padding: 0; font-weight: 400; }
+button.link:hover { background: none; text-decoration: underline; }
+button.link.danger { color: var(--bad); background: none; }
+form.inline { display: inline; }
+
+/* карточки */
+.panel, .card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px 22px; margin: 14px 0;
+}
+.card.bad { border-color: var(--bad); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 16px; }
+.grid .card { margin: 0; display: flex; flex-direction: column; justify-content: space-between; }
+.card h3 a { color: var(--ink); } .card h3 a:hover { color: var(--green); text-decoration: none; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.chip { background: var(--bg); border-radius: 20px; padding: 2px 12px; font-size: .85rem; color: var(--muted); }
+.tag { font-size: .75rem; background: var(--gold); color: #4a3b00; border-radius: 4px; padding: 1px 8px; font-weight: 700; }
+.actions { display: flex; flex-wrap: wrap; gap: 14px; font-size: .92rem; margin-top: 8px; }
+
+/* генератор случайных викторин */
+.gen { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; border-color: var(--green); }
+.gen p { margin: 0; } .gen .row { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* сообщения */
+.messages { list-style: none; padding: 0; margin: 0 0 14px; }
+.messages li { padding: 12px 16px; border-radius: 6px; margin: 8px 0; background: var(--panel); border-left: 4px solid var(--blue); }
+.messages li.success { border-left-color: var(--green); } .messages li.error { border-left-color: var(--bad); }
+.messages li.warning { border-left-color: var(--gold); }
+
+/* поля ввода */
+label { display: block; font-weight: 600; margin-bottom: 4px; }
+form p { margin: 0 0 18px; }
+input[type=text], input[type=password], input[type=email], input[type=number], textarea, select {
+  width: 100%; padding: 12px; border: 0; border-radius: 4px; background: var(--input); color: var(--input-ink); font: inherit;
+}
+input:focus, textarea:focus, select:focus { outline: 2px solid var(--green); }
+input[type=checkbox] { width: 18px; height: 18px; vertical-align: middle; margin-right: 6px; accent-color: var(--green); }
+.errorlist { color: var(--bad); padding-left: 18px; margin: 4px 0; }
+.helptext, form p ul { color: var(--muted); font-size: .85rem; }
+form p label + input[type=checkbox] { margin-left: 0; }
+
+/* вход и регистрация */
+.auth { max-width: 440px; margin: 30px auto; }
+.auth h1 { font-size: 3.2rem; }
+
+/* таблицы */
+table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 8px; overflow: hidden; }
+th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+th { background: var(--bg-dark); color: var(--muted); font-size: .85rem; text-transform: uppercase; letter-spacing: .5px; }
+tr.me td { background: #23352b; } td.rank { font-size: 1.25rem; width: 60px; }
+
+/* прохождение */
+.timer {
+  position: sticky; top: 8px; z-index: 5; text-align: center; font-size: 1.5rem; font-weight: 800;
+  background: var(--bg-dark); border: 2px solid var(--green); color: var(--green); border-radius: 8px; padding: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.timer.warn { border-color: var(--bad); color: var(--bad); animation: pulse 1s infinite; }
+@keyframes pulse { 50% { opacity: .55; } }
+fieldset { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; margin: 14px 0; padding: 14px 20px; }
+legend { font-weight: 700; padding: 0 8px; }
+fieldset div div label {
+  display: block; margin: 8px 0; padding: 10px 14px; background: var(--bg); border: 1px solid var(--line);
+  border-radius: 6px; cursor: pointer; font-weight: 400;
+}
+fieldset div div label:hover { border-color: var(--green); }
+fieldset div div label:has(input:checked) { border-color: var(--green); background: #23352b; }
+fieldset input[type=radio] { accent-color: var(--green); margin-right: 8px; }
+ul.opts { list-style: none; padding: 0; } ul.opts li { padding: 4px 0; } li.ok { color: var(--green); font-weight: 700; }
+
+/* результат */
+.score { font-size: 3.4rem; font-weight: 800; color: var(--green); line-height: 1; }
+.card.bad .score { color: var(--bad); }
+
+/* лента викторин: слева направо */
+.feed-wrap { position: relative; }
+.feed {
+  display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 6px 2px 18px;
+  scrollbar-width: thin; scrollbar-color: var(--panel-2) transparent;
+}
+.slide { flex: 0 0 290px; scroll-snap-align: start; margin: 0; min-height: 230px; display: flex; flex-direction: column; justify-content: space-between; }
+.feed-arrow {
+  position: absolute; top: 50%; transform: translateY(-60%); z-index: 3; width: 44px; height: 44px; padding: 0;
+  border-radius: 50%; font-size: 1.7rem; line-height: 1; background: var(--bg-dark); color: var(--ink); border: 1px solid var(--line);
+}
+.feed-arrow:hover { background: var(--green); color: #0b0c10; }
+.feed-arrow.left { left: -16px; } .feed-arrow.right { right: -16px; }
+@media (hover: none) { .feed-arrow { display: none; } }
+.chip.done { background: #23352b; color: var(--green); }
+
+/* профиль и аватарки */
+.me-chip { display: flex; align-items: center; gap: 8px; color: var(--ink); background: var(--panel); border-radius: 30px; padding: 4px 14px 4px 4px; }
+.me-chip:hover { text-decoration: none; background: var(--panel-2); }
+.me-chip .role { background: var(--bg-dark); }
+.avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex: none; }
+.avatar.ph { display: inline-flex; align-items: center; justify-content: center; background: var(--green); color: #0b0c10; font-weight: 800; }
+.avatar.xl { width: 120px; height: 120px; font-size: 3rem; }
+.profile-head { display: flex; flex-wrap: wrap; gap: 24px; align-items: center; margin-bottom: 8px; }
+.profile-head h1 { margin: 0 0 6px; } .bio { max-width: 520px; }
+input[type=file] { color: var(--muted); max-width: 100%; }
+
+/* разбор ошибок и заметки */
+.card.wrong { border-left: 4px solid var(--bad); }
+.given { color: var(--bad); margin: 6px 0 2px; } .right { color: var(--green); margin: 2px 0; font-weight: 600; }
+.note { background: var(--panel); border-left: 4px solid var(--gold); border-radius: 6px; padding: 12px 16px; margin: 14px 0; }
+
+/* мини-аватарки в рейтинге */
+.avatar.sm { width: 28px; height: 28px; font-size: .8rem; }
+.player { display: flex; align-items: center; gap: 10px; color: var(--ink); }
+.player:hover { color: var(--green); text-decoration: none; }
+
+/* стартовый экран */
+.hero { min-height: 62vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.hero h1 { font-size: 3.4rem; font-weight: 300; letter-spacing: 2px; text-transform: uppercase; margin: 0; }
+.tagline { font-size: 1.15rem; color: var(--muted); margin: 10px 0 30px; }
+.play-btn {
+  font-size: 1.25rem; letter-spacing: 4px; text-transform: uppercase; padding: 14px 60px;
+  border: 2px solid #fff; border-radius: 6px; animation: glow 2.2s infinite;
+}
+@keyframes glow { 0% { box-shadow: 0 0 0 0 rgba(71, 207, 115, .55); } 70% { box-shadow: 0 0 0 18px rgba(71, 207, 115, 0); } 100% { box-shadow: 0 0 0 0 rgba(71, 207, 115, 0); } }
+html:not(.played) #lobby { display: none; }
+html.played #hero { display: none; }
+html.played #lobby { animation: fadein .4s ease; }
+@keyframes fadein { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+/* лайк как в мессенджерах */
+.like-form { margin: 14px 0; }
+.like-btn { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 30px; padding: 8px 18px; display: inline-flex; align-items: center; gap: 8px; font-size: 1.05rem; }
+.like-btn:hover { background: var(--panel-2); }
+.like-btn .heart { display: inline-block; transition: transform .15s; }
+.like-btn.liked { border-color: #ff5d7a; color: #ff8fa3; }
+.like-btn.pop .heart { animation: pop .35s; }
+@keyframes pop { 50% { transform: scale(1.6); } }
+
+/* отзывы */
+.review-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.review-head form { margin-left: auto; }
+.review p { margin: 10px 0 0; }
+
+/* справка «?» */
+.help-fab { position: fixed; right: 22px; bottom: 22px; z-index: 60; width: 52px; height: 52px; padding: 0; border-radius: 50%; font-size: 1.6rem; font-weight: 800; box-shadow: 0 6px 18px rgba(0, 0, 0, .45); }
+dialog.help { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 0; width: calc(100% - 32px); max-width: 660px; max-height: 84vh; overflow: auto; }
+dialog.help::backdrop { background: rgba(0, 0, 0, .65); }
+.help-inner { padding: 22px 26px; }
+.help-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.help-inner h2 { margin: 0; } .help-inner h3 { margin: 20px 0 6px; color: var(--green); }
+.help-inner ul, .help-inner ol { margin: 6px 0; padding-left: 22px; } .help-inner li { margin: 4px 0; }
+
+/* управление рейтингом (администратор) */
+.admin-cell { white-space: nowrap; }
+.rating-form { display: inline-flex; gap: 6px; align-items: center; margin: 0 8px 0 0; }
+.admin-cell .score-input { width: 84px; padding: 6px 8px; }
+button.mini { padding: 5px 10px; font-size: .9rem; }
+</style>
+</head>
+<body>
+<header>
+  <a class="brand" href="{% url 'quiz-list' %}" onclick="try{sessionStorage.removeItem('quizPlay')}catch(e){}">🧠 Платформа викторин</a>
+  <nav>
+    {% if user.is_authenticated %}
+      <a href="{% url 'quiz-list' %}" onclick="try{sessionStorage.setItem('quizPlay','1')}catch(e){}">Викторины</a>
+      <a href="{% url 'leaderboard' %}">Рейтинг</a>
+      {% if is_creator %}<a href="{% url 'quiz-create' %}">+ Новая викторина</a>{% endif %}
+      {% if user.is_staff %}<a href="/admin/">Админ-панель</a>{% endif %}
+      <a class="me-chip" href="{% url 'profile' %}" title="Мой профиль">
+        {% if my_profile and my_profile.avatar %}<img class="avatar" src="{{ my_profile.avatar.url }}" alt="">{% else %}<span class="avatar ph">{{ user.username|slice:":1"|upper }}</span>{% endif %}
+        <span>{{ user.username }}</span>
+        <span class="role">{% if is_creator %}Администратор{% else %}Студент{% endif %}</span>
+      </a>
+      <form method="post" action="{% url 'logout' %}" class="inline" onsubmit="try{sessionStorage.removeItem('quizPlay')}catch(e){}">{% csrf_token %}<button class="link">Выйти</button></form>
+    {% else %}
+      <a href="{% url 'login' %}">Войти</a>
+      <a href="{% url 'register' %}">Регистрация</a>
+    {% endif %}
+  </nav>
+</header>
+
+<main>
+{% if messages %}
+  <ul class="messages">{% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}</ul>
+{% endif %}
+
+{% if page == 'login' or page == 'register' %}
+  <section class="auth">
+    <h1>{% if page == 'login' %}Вход{% else %}Регистрация{% endif %}</h1>
+    <form method="post">
+      {% csrf_token %}
+      {% if page == 'login' %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+      {{ form.as_p }}
+      <button class="wide">{% if page == 'login' %}Войти{% else %}Создать аккаунт студента{% endif %}</button>
+    </form>
+    <p class="center">
+      {% if page == 'login' %}Нет аккаунта? <a href="{% url 'register' %}">Зарегистрируйтесь</a><br><a href="{% url 'email-resend' %}">Не пришло письмо подтверждения?</a>
+      {% else %}Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a>{% endif %}
+    </p>
+  </section>
+
+{% elif page == 'verify_sent' %}
+  <section class="auth">
+    <h1>Проверьте почту</h1>
+    {% if sent %}
+      <div class="note">📧 Мы отправили письмо на <b>{{ email }}</b>. Откройте его и перейдите по ссылке: после этого аккаунт станет активным. Ссылка действует 3 дня.</div>
+    {% else %}
+      <div class="note">⚠ Аккаунт создан, но письмо на <b>{{ email }}</b> отправить не удалось. Проверьте настройки почты в файле .env и запросите письмо снова.</div>
+    {% endif %}
+    <p class="muted">Письма нет? Загляните в папку «Спам» или <a href="{% url 'email-resend' %}">отправьте его снова</a>.</p>
+    <p><a class="btn alt" href="{% url 'login' %}">К странице входа</a></p>
+  </section>
+
+{% elif page == 'resend' %}
+  <section class="auth">
+    <h1>Письмо с подтверждением</h1>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button class="wide">Отправить письмо</button>
+    </form>
+    <p class="center"><a href="{% url 'login' %}">Назад ко входу</a></p>
+  </section>
+
+{% elif page == 'quiz_list' %}
+  <section id="hero" class="hero">
+    <h1>Платформа викторин</h1>
+    <p class="tagline">Проходи викторины, набирай баллы и поднимайся в рейтинге!</p>
+    <button type="button" class="play-btn" id="play-btn">Играть</button>
+  </section>
+  <div id="lobby">
+  <h1>Викторины</h1>
+  {% if is_creator %}
+    <div class="panel gen">
+      <div>
+        <h3>⚡ Добавить случайную викторину</h3>
+        <p class="muted">Сайт соберёт 8 случайных вопросов из банка и сразу опубликует викторину.</p>
+      </div>
+      <div class="row">
+        <form method="post" action="{% url 'quiz-generate' %}">{% csrf_token %}<input type="hidden" name="category" value="programming"><button>💻 Программирование</button></form>
+        <form method="post" action="{% url 'quiz-generate' %}">{% csrf_token %}<input type="hidden" name="category" value="logic"><button class="alt">🧩 Логика</button></form>
+      </div>
+    </div>
+  {% endif %}
+  <div class="feed-wrap">
+    <button type="button" class="feed-arrow left" id="feed-prev" aria-label="Назад">‹</button>
+    <div class="feed" id="feed">
+      {% for quiz in quizzes %}
+        <div class="card slide">
+          <div>
+            <h3><a href="{{ quiz.get_absolute_url }}">{{ quiz.title }}</a>{% if not quiz.is_published %} <span class="tag">черновик</span>{% endif %}</h3>
+            <p class="muted">{{ quiz.description|truncatechars:110 }}</p>
+            <div class="chips">
+              <span class="chip">⏱ {{ quiz.time_limit_minutes }} мин</span>
+              <span class="chip">❓ {{ quiz.question_count }}</span>
+              <span class="chip">⭐ {{ quiz.total_points }} б.</span>
+              <span class="chip">❤ {{ quiz.like_total }}</span>
+              <span class="chip">💬 {{ quiz.review_total }}</span>
+              {% if quiz.my_attempt %}<span class="chip done">✅ {{ quiz.my_attempt.score }} / {{ quiz.total_points }}</span>{% endif %}
+            </div>
+          </div>
+          {% if is_creator %}
+            <div class="actions">
+              <a href="{% url 'quiz-update' quiz.pk %}">Редактировать</a>
+              <a href="{% url 'question-add' quiz.pk %}">+ Вопрос</a>
+              <a href="{% url 'quiz-delete' quiz.pk %}">Удалить</a>
+            </div>
+          {% elif quiz.my_attempt %}
+            <div class="actions"><a class="btn alt" href="{% url 'attempt-result' quiz.my_attempt.pk %}">Мой результат</a></div>
+          {% else %}
+            <div class="actions"><a class="btn" href="{{ quiz.get_absolute_url }}">Открыть</a></div>
+          {% endif %}
+        </div>
+      {% empty %}
+        <p class="muted">Пока нет доступных викторин.</p>
+      {% endfor %}
+    </div>
+    <button type="button" class="feed-arrow right" id="feed-next" aria-label="Вперёд">›</button>
+  </div>
+  <script>
+  (function () {
+    var feed = document.getElementById('feed');
+    if (!feed) { return; }
+    function step() { return Math.max(300, feed.clientWidth * 0.8); }
+    document.getElementById('feed-prev').addEventListener('click', function () { feed.scrollBy({ left: -step(), behavior: 'smooth' }); });
+    document.getElementById('feed-next').addEventListener('click', function () { feed.scrollBy({ left: step(), behavior: 'smooth' }); });
+  })();
+  (function () {
+    var play = document.getElementById('play-btn');
+    if (!play) { return; }
+    play.addEventListener('click', function () {
+      try { sessionStorage.setItem('quizPlay', '1'); } catch (e) {}
+      document.documentElement.classList.add('played');
+      window.scrollTo(0, 0);
+    });
+  })();
+  </script>
+
+  <h2>🏆 Рейтинг игроков</h2>
+  <table>
+    <tr><th>#</th><th>Игрок</th><th>Баллы</th><th>Викторин</th>{% if is_creator %}<th>Управление</th>{% endif %}</tr>
+    {% for e in leaders %}
+      <tr {% if e.username == user.username %}class="me"{% endif %}>
+        <td class="rank">{% if e.rank == 1 %}🥇{% elif e.rank == 2 %}🥈{% elif e.rank == 3 %}🥉{% else %}{{ e.rank }}{% endif %}</td>
+        <td><a class="player" href="{% url 'profile-user' e.username %}">{% if e.avatar %}<img class="avatar sm" src="{{ e.avatar }}" alt="">{% else %}<span class="avatar sm ph">{{ e.username|slice:":1"|upper }}</span>{% endif %}<span>{{ e.username }}</span></a></td>
+        <td><b>{{ e.total_score }}</b></td><td>{{ e.quizzes_done }}</td>{% if is_creator %}<td class="admin-cell">
+          <form method="post" action="{% url 'rating-set' e.user_id %}" class="rating-form">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><input type="number" name="score" value="{{ e.total_score }}" min="0" max="100000" class="score-input" title="Итоговые баллы игрока"><button class="mini" title="Сохранить баллы">✓</button></form>
+          <form method="post" action="{% url 'rating-hide' e.user_id %}" class="rating-form" onsubmit="return confirm('Убрать игрока из рейтинга?');">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="mini danger" title="Убрать из рейтинга">🗑</button></form>
+        </td>{% endif %}
+      </tr>
+    {% empty %}
+      <tr><td colspan="5" class="muted">Пока нет результатов: пройдите первую викторину!</td></tr>
+    {% endfor %}
+  </table>
+  <p><a href="{% url 'leaderboard' %}">Весь рейтинг →</a></p>
+  </div>
+
+{% elif page == 'quiz_detail' %}
+  <h1>{{ quiz.title }}</h1>
+  <p class="muted">{{ quiz.description|linebreaksbr }}</p>
+  <div class="chips">
+    <span class="chip">⏱ {{ quiz.time_limit_minutes }} мин</span>
+    <span class="chip">❓ {{ quiz.question_count }} вопросов</span>
+    <span class="chip">⭐ {{ quiz.total_points }} баллов</span>
+    <a class="chip" href="#reviews">💬 Отзывов: {{ reviews|length }}</a>
+    {% if not quiz.is_published %}<span class="tag">черновик</span>{% endif %}
+  </div>
+  <form method="post" action="{% url 'quiz-like' quiz.pk %}" id="like-form" class="like-form">
+    {% csrf_token %}
+    <button class="like-btn{% if liked %} liked{% endif %}" title="Нравится"><span class="heart">{% if liked %}❤️{% else %}🤍{% endif %}</span> <span class="count">{{ quiz.like_total }}</span></button>
+  </form>
+  <script>
+  (function () {
+    var form = document.getElementById('like-form');
+    if (!form) { return; }
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      var btn = form.querySelector('.like-btn');
+      fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' })
+        .then(function (r) { if (!r.ok) { throw new Error('http'); } return r.json(); })
+        .then(function (d) {
+          btn.classList.toggle('liked', d.liked);
+          btn.querySelector('.heart').textContent = d.liked ? '❤️' : '🤍';
+          btn.querySelector('.count').textContent = d.count;
+          btn.classList.remove('pop'); void btn.offsetWidth; btn.classList.add('pop');
+        })
+        .catch(function () { form.submit(); });
+    });
+  })();
+  </script>
+  {% if is_creator %}
+    <p>
+      <a class="btn" href="{% url 'question-add' quiz.pk %}">+ Вопрос</a>
+      <a class="btn alt" href="{% url 'quiz-update' quiz.pk %}">Редактировать</a>
+      <a class="btn danger" href="{% url 'quiz-delete' quiz.pk %}">Удалить</a>
+    </p>
+    <h2>Вопросы</h2>
+    {% for q in quiz.questions.all %}
+      <div class="card">
+        <b>{{ forloop.counter }}. {{ q.text }}</b> <span class="muted">({{ q.points }} б.)</span>
+        <ul class="opts">
+          {% for key, text in q.options %}
+            <li {% if key == q.correct_option %}class="ok"{% endif %}>{{ key }}) {{ text }}{% if key == q.correct_option %} ✓{% endif %}</li>
+          {% endfor %}
+        </ul>
+        <form method="post" action="{% url 'question-delete' q.pk %}">{% csrf_token %}<button class="link danger">Удалить вопрос</button></form>
+      </div>
+    {% empty %}
+      <p class="muted">Вопросов пока нет.</p>
+    {% endfor %}
+  {% elif is_student %}
+    {% if completed %}
+      <div class="note">✅ Вы уже прошли эту викторину: <b>{{ completed.score }} / {{ quiz.total_points }}</b>. Повторное прохождение недоступно, потому что вы видели правильные ответы.</div>
+      <a class="btn" href="{% url 'attempt-result' completed.pk %}">Результат и разбор ошибок</a>
+    {% else %}
+      <div class="note">☝ Засчитывается только одна попытка. После завершения вы увидите свои ошибки и правильные ответы, и пройти викторину ещё раз будет нельзя.</div>
+      <form method="post" action="{% url 'quiz-start' quiz.pk %}" onsubmit="return confirm('Начать викторину? Попытка будет одна.');">{% csrf_token %}<button>▶ Начать викторину</button></form>
+    {% endif %}
+    <h2>Мои попытки</h2>
+    {% if attempts %}
+      <table>
+        <tr><th>Дата</th><th>Результат</th></tr>
+        {% for a in attempts %}
+          <tr>
+            <td>{{ a.started_at|date:"d.m.Y H:i" }}</td>
+            <td>
+              {% if a.is_finished %}
+                {% if a.is_valid %}<a href="{% url 'attempt-result' a.pk %}">{{ a.score }} / {{ a.max_score }}</a>
+                {% else %}<span style="color:var(--bad)">аннулирована (0)</span>{% endif %}
+              {% else %}<a href="{% url 'attempt-take' a.pk %}">продолжить</a>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </table>
+    {% else %}<p class="muted">Попыток ещё не было.</p>{% endif %}
+  {% endif %}
+
+  <h2 id="reviews">💬 Отзывы ({{ reviews|length }})</h2>
+  {% if is_student %}
+    {% if completed %}
+      <form method="post" action="{% url 'quiz-review' quiz.pk %}" class="panel">
+        {% csrf_token %}
+        {{ review_form.as_p }}
+        <button>{% if completed.review %}Обновить отзыв{% else %}Отправить отзыв{% endif %}</button>
+      </form>
+    {% else %}
+      <p class="muted">Оставить отзыв можно после прохождения викторины.</p>
+    {% endif %}
+  {% endif %}
+  {% for r in reviews %}
+    <div class="card review">
+      <div class="review-head">
+        {% if r.user.profile.avatar %}<img class="avatar sm" src="{{ r.user.profile.avatar.url }}" alt="">{% else %}<span class="avatar sm ph">{{ r.user.username|slice:":1"|upper }}</span>{% endif %}
+        <a href="{% url 'profile-user' r.user.username %}"><b>{{ r.user.username }}</b></a>
+        <span class="muted">{{ r.reviewed_at|date:"d.m.Y H:i" }}</span>
+        {% if is_creator or r.user_id == user.id %}
+          <form method="post" action="{% url 'review-delete' r.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="link danger">Удалить</button></form>
+        {% endif %}
+      </div>
+      <p>{{ r.review|linebreaksbr }}</p>
+    </div>
+  {% empty %}
+    <p class="muted">Отзывов пока нет. Станьте первым!</p>
+  {% endfor %}
+
+{% elif page == 'quiz_form' %}
+  <h1>{{ title }}</h1>
+  <form method="post" class="panel">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button>Сохранить</button> <a class="btn alt" href="{% url 'quiz-list' %}">Отмена</a>
+  </form>
+
+{% elif page == 'question_form' %}
+  <h1>Новый вопрос</h1>
+  <p class="muted">Викторина: {{ quiz.title }}</p>
+  <form method="post" class="panel">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button>Добавить</button> <a class="btn alt" href="{{ quiz.get_absolute_url }}">Назад</a>
+  </form>
+
+{% elif page == 'quiz_confirm_delete' %}
+  <h1>Удалить «{{ quiz.title }}»?</h1>
+  <p class="muted">Будут удалены все вопросы и попытки прохождения.</p>
+  <form method="post">
+    {% csrf_token %}
+    <button class="danger">Да, удалить</button> <a class="btn alt" href="{{ quiz.get_absolute_url }}">Отмена</a>
+  </form>
+
+{% elif page == 'attempt' %}
+  <h1>{{ quiz.title }}</h1>
+  <div class="timer" id="timer-box">⏱ <span id="timer">--:--</span></div>
+  <form method="post" id="quiz-form">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      <fieldset><legend>{{ field.label }}</legend>{{ field.errors }}{{ field }}</fieldset>
+    {% endfor %}
+    <button class="wide">Завершить викторину</button>
+  </form>
+  <script>
+  (function () {
+    // Остаток времени приходит с сервера; отсчёт ведётся по performance.now(),
+    // поэтому не зависит от системных часов компьютера. Итог всё равно проверяет сервер.
+    var remaining = {{ remaining_seconds }};
+    var endAt = performance.now() + remaining * 1000;
+    var label = document.getElementById('timer');
+    var box = document.getElementById('timer-box');
+    var form = document.getElementById('quiz-form');
+    var submitted = false;
+    form.addEventListener('submit', function () { submitted = true; });
+    function pad(n) { return (n < 10 ? '0' : '') + n; }
+    function tick() {
+      var left = Math.max(0, Math.round((endAt - performance.now()) / 1000));
+      label.textContent = pad(Math.floor(left / 60)) + ':' + pad(left % 60);
+      if (left <= 30) { box.classList.add('warn'); }
+      if (left <= 0) { if (!submitted) { submitted = true; form.submit(); } return; }
+      setTimeout(tick, 250);
+    }
+    tick();
+  })();
+  </script>
+
+{% elif page == 'result' %}
+  <h1>Результат</h1>
+  <p class="muted">{{ attempt.quiz.title }}</p>
+  {% if attempt.is_valid %}
+    <div class="card">
+      <div class="score">{{ attempt.score }} / {{ attempt.max_score }}</div>
+      <p>баллов · затрачено {{ attempt.duration_seconds|floatformat:0 }} с</p>
+    </div>
+  {% else %}
+    <div class="card bad">
+      <div class="score">0</div>
+      <p>Попытка аннулирована: превышен лимит времени ({{ attempt.quiz.time_limit_minutes }} мин).</p>
+    </div>
+  {% endif %}
+  {% if attempt.is_valid %}
+    <h2>Разбор ошибок</h2>
+    {% for w in review %}
+      <div class="card wrong">
+        <b>{{ forloop.counter }}. {{ w.text }}</b>
+        <p class="given">✗ Ваш ответ: {% if w.given %}{{ w.given }}) {{ w.given_text }}{% else %}нет ответа{% endif %}</p>
+        <p class="right">✓ Правильный ответ: {{ w.correct }}) {{ w.correct_text }}</p>
+      </div>
+    {% empty %}
+      <div class="card">🎉 Ошибок нет: все ответы верные!</div>
+    {% endfor %}
+    {% if attempt.user_id == user.id %}
+      <p class="muted">Повторно пройти эту викторину нельзя: вы уже видели правильные ответы.</p>
+    {% endif %}
+  {% endif %}
+  {% if review_form %}
+    <h2 id="review">💬 Оставьте отзыв о викторине</h2>
+    <form method="post" action="{% url 'quiz-review' attempt.quiz.pk %}" class="panel">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.path }}">
+      {{ review_form.as_p }}
+      <button>{% if attempt.review %}Обновить отзыв{% else %}Отправить отзыв{% endif %}</button>
+    </form>
+  {% endif %}
+  <h2>💬 Отзывы о викторине ({{ reviews|length }})</h2>
+  {% for r in reviews %}
+    <div class="card review">
+      <div class="review-head">
+        {% if r.user.profile.avatar %}<img class="avatar sm" src="{{ r.user.profile.avatar.url }}" alt="">{% else %}<span class="avatar sm ph">{{ r.user.username|slice:":1"|upper }}</span>{% endif %}
+        <a href="{% url 'profile-user' r.user.username %}"><b>{{ r.user.username }}</b></a>
+        <span class="muted">{{ r.reviewed_at|date:"d.m.Y H:i" }}</span>
+        {% if is_creator or r.user_id == user.id %}
+          <form method="post" action="{% url 'review-delete' r.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="link danger">Удалить</button></form>
+        {% endif %}
+      </div>
+      <p>{{ r.review|linebreaksbr }}</p>
+    </div>
+  {% empty %}
+    <p class="muted">Отзывов пока нет. Станьте первым!</p>
+  {% endfor %}
+  <p>
+    <a class="btn" href="{% url 'leaderboard' %}">🏆 Рейтинг</a>
+    {% if not attempt.is_valid %}<a class="btn alt" href="{{ attempt.quiz.get_absolute_url }}">Попробовать снова</a>{% endif %}
+    <a class="btn alt" href="{% url 'quiz-list' %}">Все викторины</a>
+  </p>
+
+{% elif page == 'leaderboard' %}
+  <h1>🏆 Рейтинг</h1>
+  <form method="get" class="panel">
+    <label for="quiz-filter">Викторина</label>
+    <select name="quiz" id="quiz-filter" onchange="this.form.submit()">
+      <option value="">Все викторины (сумма лучших попыток)</option>
+      {% for q in quizzes %}
+        <option value="{{ q.pk }}" {% if selected_quiz and selected_quiz.pk == q.pk %}selected{% endif %}>{{ q.title }}</option>
+      {% endfor %}
+    </select>
+  </form>
+  <table>
+    <tr><th>#</th><th>Студент</th><th>Баллы</th><th>Викторин</th><th>Время, с</th>{% if is_creator %}<th>Управление</th>{% endif %}</tr>
+    {% for e in entries %}
+      <tr {% if e.username == user.username %}class="me"{% endif %}>
+        <td class="rank">{% if e.rank == 1 %}🥇{% elif e.rank == 2 %}🥈{% elif e.rank == 3 %}🥉{% else %}{{ e.rank }}{% endif %}</td>
+        <td><a class="player" href="{% url 'profile-user' e.username %}">{% if e.avatar %}<img class="avatar sm" src="{{ e.avatar }}" alt="">{% else %}<span class="avatar sm ph">{{ e.username|slice:":1"|upper }}</span>{% endif %}<span>{{ e.username }}</span></a></td><td><b>{{ e.total_score }}</b>{% if is_creator and e.bonus %} <span class="muted">({{ e.bonus|stringformat:"+d" }})</span>{% endif %}</td><td>{{ e.quizzes_done }}</td><td>{{ e.total_time }}</td>{% if is_creator %}<td class="admin-cell">
+          <form method="post" action="{% url 'rating-set' e.user_id %}" class="rating-form">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><input type="number" name="score" value="{{ e.total_score }}" min="0" max="100000" class="score-input" title="Итоговые баллы игрока"><button class="mini" title="Сохранить баллы">✓</button></form>
+          <form method="post" action="{% url 'rating-hide' e.user_id %}" class="rating-form" onsubmit="return confirm('Убрать игрока из рейтинга?');">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="mini danger" title="Убрать из рейтинга">🗑</button></form>
+        </td>{% endif %}
+      </tr>
+    {% empty %}
+      <tr><td colspan="6" class="muted">Пока нет результатов.</td></tr>
+    {% endfor %}
+  </table>
+  {% if is_creator and hidden_players %}
+    <h2>Скрытые игроки</h2>
+    <div class="panel">
+      {% for p in hidden_players %}
+        <form method="post" action="{% url 'rating-show' p.user_id %}" class="rating-form">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><b>{{ p.user.username }}</b> <button class="mini alt">Вернуть в рейтинг</button></form>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+{% elif page == 'profile' %}
+  <section class="profile-head">
+    {% if profile_obj.avatar %}<img class="avatar xl" src="{{ profile_obj.avatar.url }}" alt="">{% else %}<span class="avatar xl ph">{{ profile_user.username|slice:":1"|upper }}</span>{% endif %}
+    <div>
+      <h1>{{ profile_user.username }}</h1>
+      <span class="role">{% if profile_role == 'admin' %}Администратор{% else %}Студент{% endif %}</span>
+      <p class="muted bio">{% if profile_obj.bio %}{{ profile_obj.bio|linebreaksbr }}{% elif is_own %}Расскажите о себе в форме ниже.{% else %}Пользователь пока ничего не рассказал о себе.{% endif %}</p>
+      {% if is_own %}
+        <div class="muted">📧
+          {% if user.email %}{{ user.email }}
+            {% if profile_obj.email_verified %}<span class="chip done">✅ подтверждена</span>
+            {% else %}<span class="tag">не подтверждена</span>
+              <form method="post" action="{% url 'email-resend' %}" class="inline">{% csrf_token %}<button class="link">Отправить письмо снова</button></form>
+            {% endif %}
+          {% else %}почта не привязана: добавьте её в форме ниже
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </section>
+  <div class="chips">
+    <span class="chip">✅ Пройдено викторин: {{ results|length }}</span>
+    <span class="chip">⭐ Всего баллов: {{ total_score }}</span>
+  </div>
+  {% if is_own %}
+    <h2>Редактировать профиль</h2>
+    <form method="post" enctype="multipart/form-data" class="panel">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button>Сохранить</button>
+    </form>
+  {% endif %}
+  <h2>Результаты</h2>
+  {% if results %}
+    <table>
+      <tr><th>Викторина</th><th>Баллы</th><th>Дата</th></tr>
+      {% for a in results %}
+        <tr><td>{{ a.quiz.title }}</td><td>{{ a.score }} / {{ a.max_score }}</td><td>{{ a.finished_at|date:"d.m.Y H:i" }}</td></tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <p class="muted">Пока нет пройденных викторин.</p>
+  {% endif %}
+{% endif %}
+</main>
+
+<button type="button" class="help-fab" id="help-open" title="Как это работает" aria-label="Справка">?</button>
+<dialog id="help-dialog" class="help">
+  <div class="help-inner">
+    <div class="help-head">
+      <h2>Как пользоваться платформой</h2>
+      <button type="button" class="link" id="help-close" aria-label="Закрыть">✕</button>
+    </div>
+
+    <h3>🎯 Что это?</h3>
+    <p>Платформа интеллектуальных викторин: здесь можно проверить знания по программированию и логике, набирать баллы и соревноваться с другими студентами.</p>
+
+    <h3>💡 Зачем это нужно?</h3>
+    <ul>
+      <li>Закрепить материал в формате быстрой игры.</li>
+      <li>Подготовиться к зачётам и экзаменам.</li>
+      <li>Увидеть свои ошибки и узнать правильные ответы.</li>
+      <li>Попасть в рейтинг лучших игроков.</li>
+    </ul>
+
+    <h3>▶ Как играть</h3>
+    <ol>
+      <li>Нажмите «Играть» и выберите викторину в ленте.</li>
+      <li>Прочитайте описание и нажмите «Начать викторину». Сразу запустится таймер.</li>
+      <li>Отметьте ответы и нажмите «Завершить». Если время выйдет, ответы отправятся сами.</li>
+      <li>Посмотрите результат и разбор ошибок, при желании оставьте отзыв.</li>
+    </ol>
+
+    <h3>⏱ Правила</h3>
+    <ul>
+      <li>У каждой викторины свой лимит времени. Время считает сервер, поэтому обойти таймер нельзя.</li>
+      <li>Не уложились во время: попытка аннулируется, баллы 0, в рейтинг она не попадает. Такую викторину можно пройти заново.</li>
+      <li>Засчитывается одна попытка: после неё вы видите правильные ответы, и повторно пройти викторину нельзя.</li>
+    </ul>
+
+    <h3>🏆 Баллы и рейтинг</h3>
+    <p>За каждый правильный ответ начисляются баллы вопроса. В рейтинге суммируются результаты по всем пройденным викторинам, а при равенстве выше тот, кто ответил быстрее.</p>
+
+    <h3>❤ Лайки и 💬 отзывы</h3>
+    <p>Сердечко на странице викторины ставит лайк (ещё одно нажатие снимает его). Отзыв можно оставить после прохождения викторины.</p>
+
+    <h3>👤 Профиль</h3>
+    <p>Нажмите на своё имя справа вверху: там можно загрузить аватарку, написать о себе и привязать почту (на неё придёт письмо со ссылкой подтверждения).</p>
+
+    {% if is_creator %}
+      <h3>🛠 Для администратора</h3>
+      <ul>
+        <li>«+ Новая викторина»: создайте викторину, добавьте вопросы (варианты A–D, правильный ответ, баллы) и поставьте галочку «Опубликована».</li>
+        <li>Кнопки «Программирование» и «Логика» на главной собирают случайную викторину из банка вопросов.</li>
+        <li>В рейтинге у каждого игрока есть поле баллов с кнопкой ✓ (изменить итоговые баллы) и кнопка 🗑 (убрать из рейтинга). Убранных игроков можно вернуть внизу страницы «Рейтинг».</li>
+        <li>Роли пользователей меняются в «Админ-панели».</li>
+      </ul>
+    {% endif %}
+    <p><button type="button" id="help-ok">Понятно</button></p>
+  </div>
+</dialog>
+<script>
+(function () {
+  var dlg = document.getElementById('help-dialog');
+  var openBtn = document.getElementById('help-open');
+  if (!dlg || !openBtn) { return; }
+  function closeDlg() { if (dlg.close) { dlg.close(); } else { dlg.removeAttribute('open'); } }
+  openBtn.addEventListener('click', function () { if (dlg.showModal) { dlg.showModal(); } else { dlg.setAttribute('open', ''); } });
+  document.getElementById('help-close').addEventListener('click', closeDlg);
+  document.getElementById('help-ok').addEventListener('click', closeDlg);
+  dlg.addEventListener('click', function (event) { if (event.target === dlg) { closeDlg(); } });
+})();
+</script>
+</body>
+</html>
