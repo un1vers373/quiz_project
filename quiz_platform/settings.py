@@ -121,7 +121,10 @@ TIME_ZONE = 'Asia/Bishkek'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+
 
 # Загружаемые файлы (аватарки профилей)
 MEDIA_URL = 'media/'
